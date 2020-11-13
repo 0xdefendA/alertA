@@ -1,0 +1,15 @@
+---
+alert_name: "aws_console_login"
+alert_type: "threshold"
+category: "authentication"
+criteria: "source='cloudtrail' AND json_extract_scalar(details,'$.eventname') = 'ConsoleLogin'"
+severity: "INFO"
+summary: "User {{metadata.value}} {{metadata.count}} console logins"
+event_snippet: "{{details.useridentity.arn}} to account {{details.recipientaccountid}} from IP {{details.sourceipaddress}}"
+event_sample_count: 5
+threshold: 1
+aggregation_key: "details.useridentity.arn"
+debug: True
+tags:
+  - "login"
+  - "aws"
