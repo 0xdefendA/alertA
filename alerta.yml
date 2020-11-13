@@ -1,0 +1,10 @@
+---
+mongohost: "mongo"
+mongoport: 27017
+mongodatabase: "alerta"
+botoprofile: "default"
+athenadatabase: "defenda_datalake"
+athenatable: "events"
+logging_config: "logging_config.yml"
+alerts_file_mask: "./alerts/*alert.yml"
+debug: True

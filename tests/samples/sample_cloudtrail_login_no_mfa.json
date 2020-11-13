@@ -1,0 +1,57 @@
+[{
+    "eventversion": "1.05",
+    "useridentity": {
+        "type": "Root",
+        "principalid": "0123456789",
+        "arn": "arn:aws:iam::0123456789:root",
+        "accountid": "0123456789",
+        "accesskeyid": ""
+    },
+    "eventtime": "2019-09-04T17:09:51Z",
+    "eventsource": "signin.amazonaws.com",
+    "eventname": "ConsoleLogin",
+    "awsregion": "us-east-1",
+    "sourceipaddress": "6.9.9.93",
+    "useragent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:68.0) Gecko/20100101 Firefox/8.0",
+    "requestparameters": null,
+    "responseelements": {
+        "consolelogin": "Success"
+    },
+    "additionaleventdata": {
+        "loginto": "https://console.aws.amazon.com/cloudfront/?&isauthcode=true",
+        "mobileversion": "No",
+        "mfaused": "No"
+    },
+    "eventid": "fac7ac4c-2bf5-4cbb-b239-a7883f55435a",
+    "eventtype": "AwsConsoleSignIn",
+    "recipientaccountid": "0123456789"
+},{
+    "eventversion": "1.05",
+    "useridentity": {
+        "type": "Root",
+        "principalid": "0123456789",
+        "arn": "arn:aws:iam::0123456789:root",
+        "accountid": "0123456789",
+        "accesskeyid": ""
+    },
+    "eventtime": "2019-09-04T17:19:51Z",
+    "eventsource": "signin.amazonaws.com",
+    "eventname": "ConsoleLogin",
+    "awsregion": "us-east-1",
+    "sourceipaddress": "6.7.8.93",
+    "useragent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:68.0) Gecko/20100101 Firefox/8.0",
+    "requestparameters": null,
+    "responseelements": {
+        "consolelogin": "Success"
+    },
+    "additionaleventdata": {
+        "loginto": "https://console.aws.amazon.com/cloudfront/?&isauthcode=true",
+        "mobileversion": "No",
+        "mfaused": "No"
+    },
+    "eventid": "fac7ac4c-2bf5-4cbb-b239-a7883f55435b",
+    "eventtype": "AwsConsoleSignIn",
+    "recipientaccountid": "0123456789"
+}
+
+]

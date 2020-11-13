@@ -1,0 +1,8 @@
+boto3
+pyyaml
+pymongo
+tzlocal
+pandas
+netaddr
+pynsive
+-e git://github.com/noahmorrison/chevron.git#egg=chevron
