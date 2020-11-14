@@ -4,7 +4,6 @@ import botocore
 import json
 import io
 import pandas as pd
-import base64
 import time
 import pymongo
 import sys
@@ -106,8 +105,7 @@ def get_athena_query(criteria,config):
     table=config.athenatable
     query=r"""
     SELECT
-    eventid,
-    _base64
+    *
     FROM "{}"."{}"
     where
     {}
@@ -261,11 +259,11 @@ def get_athena_events(criteria,config,athena,session):
     if query_status == 'SUCCEEDED':
         # get the csv data athena produces and turn it into pandas/json
         pd_data=dataframe_from_athena_s3(session,athena_response,default_bucket(session))
-        # extract raw events
-        for i in range(0, len(pd_data)):
-            decoded_event=json.loads(base64.b64decode(pd_data.iloc[i]['_base64']))
-            logger.debug(decoded_event)
-            events.append(decoded_event)
+        # recreate event with nested json
+        for message in pd_data.to_dict('records'):
+            message['details']=json.loads(message['details'])
+            events.append(message)
+
     return events
 
 def determine_threshold_trigger(alert_params,events):
