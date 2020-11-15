@@ -15,7 +15,7 @@ For example you can define an alert that triggers on a combination of failed log
 
 
 ### Alert structure
-Here's what a sample alert looks like:
+Here's what a simple sample alert looks like:
 
 ```yaml
 ---
@@ -53,3 +53,69 @@ The 'event_snippet' field is a sample of events you'd like to include in the ale
 'debug' is a debugging tag to signal verbose output
 
 'tags' is a series of tags you'd like to apply to any alerts generated via this criteria.
+
+### Sequence Alerts
+Sequence alerts are a set of alerts that have to all be satisfied in order for the sequence alert to be triggered.
+
+Sequence alerts consist of some metadata and a series of alerts in 'slots'. Each slot can be any alert you can define. If all the slots trigger, the sequence alert triggers. If the slots do not trigger within the timeout period of the sequence alert, the alert does not trigger.
+
+Each slot can reference data within other slots, so you can establish alerts that do things like watch for failed logins, followed by successful login followed by program installation for a single user.
+
+#### Sample Sequence Alert
+Lets look at a sample sequence alert looking for risky logins. We will be using authentication events from OneLogin as OneLogin has a concept of a risk score associated with a login. It uses this to drive MFA decisions, etc but it should be unusual for someone to have multiple risky logins within a period of time. So while a normal alerting system would force you to trigger an alert on a single 'risky login', alertA can allow you to trigger only on multiple risky logins over a length of time.
+
+Here's the alert definition:
+```yaml
+---
+alert_name: "multiple_risky_logins"
+alert_type: "sequence"
+lifespan: "7 days"
+severity: "INFO"
+summary: "Multiple {{metadata.count}} risky logins by {{slots.0.events.0.details.user_name}}"
+debug: True
+category: "authentication"
+tags:
+    - "login"
+    - "onelogin"
+slots:
+    -
+        alert_name: "risky_login_1"
+        alert_type: "threshold"
+        severity: "INFO"
+        criteria: "source='onelogin' AND CAST(json_extract_scalar(details,'$.risk_score') as INTEGER)>80"
+        summary: "risky login by {{events.0.details.user_name}} risk score: {{events.0.details.risk_score}}"
+        event_snippet: "{{details.user_name}} risk score {{details.risk_score}} from IP {{details.sourceipaddress}}"
+        aggregation_key: "details.user_name"
+        threshold: 1
+        event_sample_count: 5
+    -
+        alert_name: "risky_login_2"
+        alert_type: "threshold"
+        severity: "INFO"
+        criteria: "source='onelogin' AND CAST(json_extract_scalar(details,'$.risk_score') as INTEGER)>80 AND json_extract_scalar(details,'$.user_name')='{{slots.0.events.0.details.user_name}}'"
+        summary: "risky login by {{events.0.details.user_name}} risk score: {{events.0.details.risk_score}}"
+        event_snippet: "{{details.user_name}} risk score {{details.risk_score}} from IP {{details.sourceipaddress}}"
+        aggregation_key: "details.user_name"
+        threshold: 1
+        event_sample_count: 5
+
+```
+
+The alert is looking for a series of two logins from the same user with a risk score greater than 80 over a period of 7 days. The alerts are in 'slots' and use aws Athena SQL as the language wich allows for access to the nested json particular to an event from OneLogin. For more on the SQL/structure please see the [datalake project](https://github.com/0xdefendA/defenda-data-lake).
+
+#### Structure
+To unpack the metadata, alert_name is simply the name we decide to give it. The alert_type is 'sequence' since we are looking for more than one thing to happen in order to trigger. The lifespan is the length of time this alert will live while it looks for all slots to satisfy. So if slot 0 is triggered, an 'in flight' alert is created looking for slot 1 to be triggered. If that happens within 7 days, the sequence alert fires. If 7 days pass without slot 1 triggering the alert is torn down and the cycle begins again.
+
+The severity, etc fields are self-evident. The summary field is the text of the alert that will be created and can use templating to incorporate fields from within the alert structure. As you can see, you can incorporate data from any of the sub events that trigger a slot with template notation like `{{slots.0.events.0.details.user_name}}` which refers to the alert in slot 0, the first event that triggered that alert, the details substructure and the user_name field within. With this templating you can format the text to be practically anything you'd like.
+
+This templating extends to the 'slots' for alerts as well. You can see an example in the critera for the 2nd slot:
+
+```yaml
+        criteria: "source='onelogin' AND CAST(json_extract_scalar(details,'$.risk_score') as INTEGER)>80 AND position('Defaulted' IN json_extract_scalar(details,'$.risk_reasons'))=0 AND json_extract_scalar(details,'$.user_name')='{{slots.0.events.0.details.user_name}}'"
+```
+`{{slots.0.events.0.details.user_name}}` is a reference to the previous slot, first event, details.user_name field within that slot. This is how this sequence alert manages to trigger only when a particular user has more than X risky logins within a period of time, but you can also use this to tie slots together in whatever manner makes sense for your use case.
+
+'In flight' sequence alerts are stored in the mongo collection called `inflight_alerts`. You can inspect this collection to get a sense of how your alerts are functioning, how many are being processed, etc.
+
+
+
