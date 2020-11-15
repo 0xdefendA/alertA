@@ -1,0 +1,32 @@
+---
+alert_name: "multiple_risky_logins"
+alert_type: "sequence"
+lifespan: "7 days"
+severity: "INFO"
+summary: "Multiple {{metadata.count}} risky logins by {{slots.0.events.0.details.user_name}}"
+debug: True
+category: "authentication"
+tags:
+    - "login"
+    - "onelogin"
+slots:
+    -
+        alert_name: "risky_login_1"
+        alert_type: "threshold"
+        severity: "INFO"
+        criteria: "source='onelogin' AND CAST(json_extract_scalar(details,'$.risk_score') as INTEGER)>80 AND position('Defaulted' IN json_extract_scalar(details,'$.risk_reasons'))=0"
+        summary: "risky login by {{events.0.details.user_name}} risk score: {{events.0.details.risk_score}}"
+        event_snippet: "{{details.user_name}} risk score {{details.risk_score}} from IP {{details.sourceipaddress}}"
+        aggregation_key: "details.user_name"
+        threshold: 1
+        event_sample_count: 5
+    -
+        alert_name: "risky_login_2"
+        alert_type: "threshold"
+        severity: "INFO"
+        criteria: "source='onelogin' AND CAST(json_extract_scalar(details,'$.risk_score') as INTEGER)>80 AND position('Defaulted' IN json_extract_scalar(details,'$.risk_reasons'))=0 AND json_extract_scalar(details,'$.user_name')='{{slots.0.events.0.details.user_name}}'"
+        summary: "risky login by {{events.0.details.user_name}} risk score: {{events.0.details.risk_score}}"
+        event_snippet: "{{details.user_name}} risk score {{details.risk_score}} from IP {{details.sourceipaddress}}"
+        aggregation_key: "details.user_name"
+        threshold: 1
+        event_sample_count: 5
