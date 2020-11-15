@@ -1,5 +1,5 @@
 # alertA
-An alert engine for the defendA data lake
+An alert engine for the [defendA data lake](https://github.com/0xdefendA/defenda-data-lake)
 
 ## Why?
 The [defendA data lake](https://github.com/0xdefendA/defenda-data-lake) is meant to be the easiest way to store unstructured JSON security data in a serverless architecture resulting in an easy to query Athena/S3 data lake. On it's own the data lake doesn't present a method to author or execute security alerting.
