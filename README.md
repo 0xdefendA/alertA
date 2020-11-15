@@ -115,7 +115,7 @@ The severity, etc fields are self-evident. The summary field is the text of the 
 This templating extends to the 'slots' for alerts as well. You can see an example in the critera for the 2nd slot:
 
 ```yaml
-        criteria: "source='onelogin' AND CAST(json_extract_scalar(details,'$.risk_score') as INTEGER)>80 AND position('Defaulted' IN json_extract_scalar(details,'$.risk_reasons'))=0 AND json_extract_scalar(details,'$.user_name')='{{slots.0.events.0.details.user_name}}'"
+criteria: "source='onelogin' AND CAST(json_extract_scalar(details,'$.risk_score') as INTEGER)>80 AND position('Defaulted' IN json_extract_scalar(details,'$.risk_reasons'))=0 AND json_extract_scalar(details,'$.user_name')='{{slots.0.events.0.details.user_name}}'"
 ```
 `{{slots.0.events.0.details.user_name}}` is a reference to the previous slot, first event, details.user_name field within that slot. This is how this sequence alert manages to trigger only when a particular user has more than X risky logins within a period of time, but you can also use this to tie slots together in whatever manner makes sense for your use case.
 
