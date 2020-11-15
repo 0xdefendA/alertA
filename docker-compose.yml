@@ -1,0 +1,21 @@
+version: '2.2'
+services:
+  mongo:
+    image: mongo:latest
+    command: mongod --storageEngine=wiredTiger
+    volumes:
+      - mongodb:/data/db
+    ports:
+      - "27017:27017"
+  python:
+    image: python:3
+    command: bash /opt/alerts/startup.sh
+    stdin_open: true
+    tty: true
+    links:
+      - mongo
+    volumes:
+      - "./:/opt/alerts"
+      - "${HOME}/.aws/:/root/.aws/:ro"
+volumes:
+  mongodb:
