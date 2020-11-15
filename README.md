@@ -118,4 +118,13 @@ This templating extends to the 'slots' for alerts as well. You can see an exampl
 'In flight' sequence alerts are stored in the mongo collection called `inflight_alerts`. You can inspect this collection to get a sense of how your alerts are functioning, how many are being processed, etc.
 
 
+## Docker
+To get up and running quickly simply:
+
+```bash
+docker-compose -f docker-compose.yml -p alerta up
+```
+and you will end up with 2 containers (python and mongoDB) running the alertA code in this repo with a sample alert looking for a console login to aws.
+
+This will get you up and running, for a production deployment you'll want a permanent data storage for the mongo database to preserve your alerts.
 
