@@ -6,7 +6,9 @@ The [defendA data lake](https://github.com/0xdefendA/defenda-data-lake) is meant
 
 This project adds an alerting engine to the data lake. You can define alerts using simple .yaml files and template the structure and output of alerts without writing any code.
 
-### Sequence alerts
+### Alert types: threshold and sequence
+This engine includes the usual threshold alert type where you can choose a threshold of events that have to occur over some period of time grouped by a common element. i.e. X failed logins by username.
+
 Additionally this engine offers a capability not usually seen in other alerting engines: the sequence alert.
 
 With a sequence alert you define a series of triggers that have to occur in sequence in order for the alert to be triggered. This helps cut down on the false positives associated with single trigger alerts.
