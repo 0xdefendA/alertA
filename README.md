@@ -7,15 +7,17 @@ The [defendA data lake](https://github.com/0xdefendA/defenda-data-lake) is meant
 This project adds an alerting engine to the data lake. You can define alerts using simple .yaml files and template the structure and output of alerts without writing any code.
 
 ### Sequence alerts
-Additionally this engine offers the capability of serveral types of alerts not usually seen in other alerting engines. Most notably is the 'sequence' alert.
+Additionally this engine offers a capability not usually seen in other alerting engines: the sequence alert.
 
 With a sequence alert you define a series of triggers that have to occur in sequence in order for the alert to be triggered. This helps cut down on the false positives associated with single trigger alerts.
 
 For example you can define an alert that triggers on a combination of failed login, successful login and account creation over some period of time and with configurable thresholds. Triggering on the combination of these events allows you to avoid investigating every occurance of the underlying events.
 
+An example is covered in detail below.
+
 
 ### Alert structure
-Here's what a simple sample alert looks like:
+Here's what a simple sample threshold alert looks like:
 
 ```yaml
 ---
@@ -38,7 +40,7 @@ tags:
 This alert is looking for AWS console logins, triggering on any single login and including details from the last 5 that match in the alert text.
 
 #### Alert definition fields
-The 'criteria' field is the SQL sent to Athena to gather events to consider for triggering an alert. The expectation is that there will be many events retrieved, then inspected for count thresholds, etc. i.e. the SQL does not have to be specific.
+The 'criteria' field is the SQL sent to Athena to gather events to consider for triggering an alert. The expectation is that there will be many events retrieved, then inspected for count thresholds, etc. i.e. the SQL does not have to be precise enough to select a single record.
 
 The 'summary' field is the text of the alert. You can include fields within the alert or events using {{fieldname}} formatting
 
