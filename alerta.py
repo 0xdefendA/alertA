@@ -213,7 +213,7 @@ def process_sequence_alert(config,db,session,athena,alert_params):
     # we change the value of the slot
     # so lets iterate on index instead of just "for slot in slots"
     # find the first slot without matching events
-    index, slot = first_matching_index_value(alert_params['slots'],condition = lambda i: not 'events' in i)
+    index, slot = first_matching_index_value(alert_params['slots'],condition = lambda i: not 'triggered' in i)
     if slot:
         events=None
         # Search for slot criteria
@@ -224,8 +224,8 @@ def process_sequence_alert(config,db,session,athena,alert_params):
         except Exception as e:
             logger.exception("Received exception while querying athena: %r" % e)
 
-        # if slot events matching criteria found
-        if events:
+        # if slot is a threshold, are events matching criteria found?
+        if slot["alert_type"] == "threshold" and events:
             # check to see if event(s) are already captured in an inflight alert
             # TODO: need to check events and their slot? or just events
             events=remove_inflight_events(db,events,alert_params)
@@ -237,6 +237,14 @@ def process_sequence_alert(config,db,session,athena,alert_params):
                     inflight=deepcopy(alert_params)
                     inflight["slots"][index]=alert
                     save_inflight_alert(db,inflight)
+        # if slot is a deadman, are we lacking enough events?
+        if slot["alert_type"] == "deadman":
+            # does the count or lack of events trigger the deadman alert in this slot?
+            for alert in determine_deadman_trigger(slot,events):
+                # criteria met, save or create an inflight alert
+                inflight=deepcopy(alert_params)
+                inflight["slots"][index]=alert
+                save_inflight_alert(db,inflight)
     return
 
 def get_athena_events(criteria,config,athena,session):
@@ -266,7 +274,59 @@ def get_athena_events(criteria,config,athena,session):
 
     return events
 
-def determine_threshold_trigger(alert_params,events):
+def determine_deadman_trigger(alert_params, events):
+    ''' Given a deadman alert's params and a set of events (or lack thereof)
+        determine if it should fire and resolve summary/snippets, etc
+
+        Largely the same as a threshold alert, except this accounts
+        for a lack of events (altogether missing, or below a count) as the trigger
+    '''
+    counts=mostCommon(events,alert_params['aggregation_key'])
+    if not events or not counts:
+        # likely no events
+        # make up a metadata count
+        counts = [(alert_params['aggregation_key'], 0)]
+
+    for i in counts:
+        # lack of events, or event count below the threshold is a trigger
+        if i[1] <= alert_params['threshold']:
+            alert=alert_params
+            alert['triggered']=True
+            # set the summary via chevron/mustache template
+            # with the alert plus metadata
+            metadata={'metadata':
+                {'value':i[0],
+                'count':i[1]}
+            }
+            alert=merge(alert,metadata)
+            # limit events to those matching the aggregation_key value
+            # so the alert only gets events that match the count mostCommon results
+            alert['events']=[]
+            for event in events:
+                dotted_event=DotDict(event)
+                if i[0]==dotted_event.get(alert_params['aggregation_key']):
+                    alert['events'].append(dotted_event)
+            alert['summary']=chevron.render(alert['summary'],alert)
+            # walk the alert events for any requested event snippets
+            for event in alert['events'][:alert_params['event_sample_count']]:
+                alert['summary'] += ' ' + chevron.render(alert_params['event_snippet'],event)
+            yield alert
+
+def process_deadman_alert(config,db,session,athena,alert_params):
+    events=[]
+    # load any default params that may be missing in the file
+    alert_params=get_threshold_alert_shell(alert_params)
+    try:
+        events=get_athena_events(alert_params["criteria"],config,athena,session)
+    except Exception as e:
+        logger.exception("Received exception while querying athena: %r" % e)
+
+    # see if the count of or lack of events is enough to trigger a deadman alert
+    for alert in determine_deadman_trigger(alert_params,events):
+        # criteria met, save
+        save_alert(db,alert)
+
+def determine_threshold_trigger(alert_params, events):
     ''' Given a threshold alert's params, and a set of events
         determine if it should fire and if so, resolve
         it's summary, event snippets, etc.
@@ -279,6 +339,7 @@ def determine_threshold_trigger(alert_params,events):
     for i in counts:
         if i[1] >= alert_params['threshold']:
             alert=alert_params
+            alert['triggered']=True
             # set the summary via chevron/mustache template
             # with the alert plus metadata
             metadata={'metadata':
@@ -339,6 +400,8 @@ def main(config):
         alert_params=yaml.safe_load(open(alert_file))
         if alert_params["alert_type"]=="threshold":
             process_threshold_alert(config,db,session,athena,alert_params)
+        if alert_params["alert_type"]=="deadman":
+            process_deadman_alert(config, db, session, athena, alert_params)
         if alert_params["alert_type"]=="sequence":
             process_sequence_alert(config,db,session,athena,alert_params)
 
