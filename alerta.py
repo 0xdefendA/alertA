@@ -190,21 +190,21 @@ def get_deadman_alert_shell(alert_params):
     """
     alert = {
         "alert_name": alert_params.get("alert_name", "unnamed"),
-        "alert_type": alert_params.get("alert_type", "threshold"),
+        "alert_type": alert_params.get("alert_type", "deadman"),
         "utctimestamp": utcnow().isoformat(),
         "severity": alert_params.get("severity", "INFO"),
         "summary": alert_params.get("summary", "deadman alert!"),
         "event_snippet": alert_params.get("event_snippet", ""),
-        "event_sample_count": alert_params.get("event_sample_count", 3),
+        "event_sample_count": alert_params.get("event_sample_count", 0),
         "category": alert_params.get("category", "deadman"),
         "tags": alert_params.get("tags", ["deadman"]),
         "threshold": alert_params.get("threshold", 0),
-        "aggregation_key": alert_params.get("aggregation_key", ""),
+        "aggregation_key": alert_params.get("aggregation_key", "none"),
         "criteria": alert_params.get("criteria", ""),
         "debug": alert_params.get("debug", True),
         "events": [],
     }
-    return alert
+    return merge(alert_params, alert)
 
 
 def process_inflight_alerts(config, db, session, athena):
