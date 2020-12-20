@@ -184,6 +184,29 @@ def get_threshold_alert_shell(alert_params):
     return alert
 
 
+def get_deadman_alert_shell(alert_params):
+    """
+    default dict for a deadman alert
+    """
+    alert = {
+        "alert_name": alert_params.get("alert_name", "unnamed"),
+        "alert_type": alert_params.get("alert_type", "threshold"),
+        "utctimestamp": utcnow().isoformat(),
+        "severity": alert_params.get("severity", "INFO"),
+        "summary": alert_params.get("summary", "deadman alert!"),
+        "event_snippet": alert_params.get("event_snippet", ""),
+        "event_sample_count": alert_params.get("event_sample_count", 3),
+        "category": alert_params.get("category", "deadman"),
+        "tags": alert_params.get("tags", ["deadman"]),
+        "threshold": alert_params.get("threshold", 0),
+        "aggregation_key": alert_params.get("aggregation_key", ""),
+        "criteria": alert_params.get("criteria", ""),
+        "debug": alert_params.get("debug", True),
+        "events": [],
+    }
+    return alert
+
+
 def process_inflight_alerts(config, db, session, athena):
     # iterate the inflight sequence alerts
     # and see if any slots without events have matches now
@@ -390,7 +413,7 @@ def determine_deadman_trigger(alert_params, events):
 def process_deadman_alert(config, db, session, athena, alert_params):
     events = []
     # load any default params that may be missing in the file
-    alert_params = get_threshold_alert_shell(alert_params)
+    alert_params = get_deadman_alert_shell(alert_params)
     try:
         events = get_athena_events(alert_params["criteria"], config, athena, session)
     except Exception as e:
