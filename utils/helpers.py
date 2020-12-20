@@ -7,49 +7,51 @@ from utils.dotdict import DotDict
 
 logger = logging.getLogger()
 
-CLOUDTRAIL_FILE_NAME_REGEX = re.compile(
-    r"\d+_cloudtrail_.+.json.gz$", re.I
-)
+CLOUDTRAIL_FILE_NAME_REGEX = re.compile(r"\d+_cloudtrail_.+.json.gz$", re.I)
+
 
 def emit_json_block(stream):
-    ''' take a stream of io.StringIO(blob)
-        iterate it and emit json blocks as they are found
-    '''
+    """take a stream of io.StringIO(blob)
+    iterate it and emit json blocks as they are found
+    """
     open_brackets = 0
-    block = ''
+    block = ""
     while True:
         c = stream.read(1)
         if not c:
             break
 
-        if c == '{':
+        if c == "{":
             open_brackets += 1
-        elif c == '}':
+        elif c == "}":
             open_brackets -= 1
         block += c
 
         if open_brackets == 0:
             yield block.strip()
-            block = ''
+            block = ""
+
 
 def short_uuid():
     return str(uuid.uuid4())[0:8]
+
 
 def is_cloudtrail(filename):
     match = CLOUDTRAIL_FILE_NAME_REGEX.search(filename)
     return bool(match)
 
+
 def is_ip(ip):
-    '''
-        validate an ipv4/ipv6 or cidr mask
-        valid_ipv4/6 won't recognize a cidr mask
-    '''
+    """
+    validate an ipv4/ipv6 or cidr mask
+    valid_ipv4/6 won't recognize a cidr mask
+    """
     try:
         # by default netaddr will validate single digits like '0' as 0.0.0.0/32
         # lets be a bit more precise and support cidr masks
         # by checking for format chars (. or :)
         # and using the IPNetwork constructor
-        if ('.' in ip) or (':' in ip):
+        if ("." in ip) or (":" in ip):
             netaddr.IPNetwork(ip)
             return True
         else:
@@ -57,17 +59,20 @@ def is_ip(ip):
     except Exception:
         return False
 
+
 def isIPv4(ip):
     try:
-        return netaddr.valid_ipv4(ip,flags=1)
+        return netaddr.valid_ipv4(ip, flags=1)
     except:
         return False
 
+
 def isIPv6(ip):
     try:
-        return netaddr.valid_ipv6(ip,flags=1)
+        return netaddr.valid_ipv6(ip, flags=1)
     except:
         return False
+
 
 def generate_metadata(context):
     metadata = {
@@ -81,12 +86,14 @@ def generate_metadata(context):
 
     return DotDict(metadata)
 
+
 def chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
-        yield l[i:i + n]
+        yield l[i : i + n]
 
-def first_matching_index_value(iterable, condition = lambda x: True):
+
+def first_matching_index_value(iterable, condition=lambda x: True):
     """
     Returns the first index,value tuple in the list that
     satisfies the `condition`.
@@ -98,7 +105,9 @@ def first_matching_index_value(iterable, condition = lambda x: True):
     (1, 2)
     """
     try:
-        return next((index,value) for index,value in enumerate(iterable) if condition(value))
+        return next(
+            (index, value) for index, value in enumerate(iterable) if condition(value)
+        )
 
     except StopIteration:
-        return (None,None)
+        return (None, None)

@@ -1,0 +1,33 @@
+[
+    {
+        "account": "123437201234",
+        "detail": {
+            "account_id": 12345,
+            "actor_system": "",
+            "actor_user_id": 12341234,
+            "actor_user_name": "Jane Doe",
+            "create": {
+                "_id": "85045584-0234-467c-ba63-7d73d5bdbc57"
+            },
+            "event_timestamp": "2020-01-31 19:21:55 UTC",
+            "event_type_id": 5,
+            "ipaddr": "10.163.10.123",
+            "notes": "Authentication method: password.",
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36",
+            "user_id": 12344694,
+            "user_name": "Jane Doe",
+            "uuid": "85041234-0234-467c-ba63-7d73d5bdbc57"
+        },
+        "detail-type": "onelogin.event",
+        "id": "6803c3ae-f9ac-f8a5-0e34-9a37a14562e6",
+        "region": "us-west-2",
+        "resources": [],
+        "tags": [
+            "one",
+            "two"
+        ],
+        "source": "aws.partner/onelogin.com/US-92266/c35cc71234",
+        "time": "2020-01-31T19:22:41Z",
+        "version": "0"
+    }
+]
