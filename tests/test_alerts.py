@@ -13,7 +13,11 @@ from pathlib import Path
 from utils.dates import utcnow
 from pytest_docker_tools import build, container, fetch
 from alerta import generate_meteor_id
-from alerta import get_threshold_alert_shell, get_sequence_alert_shell
+from alerta import (
+    get_threshold_alert_shell,
+    get_sequence_alert_shell,
+    get_deadman_alert_shell,
+)
 from alerta import remove_previously_alerted, remove_inflight_events
 from alerta import save_alert, save_inflight_alert
 from alerta import determine_threshold_trigger
@@ -231,12 +235,37 @@ class TestAlertFunctions(object):
             # test event snippet by picking data in the json file
             assert "from 6.9.9.93" in alert["summary"]
 
+    def test_save_resolved_deadman_alert(self, mongo_connection):
+        # deadman alerts look for a lack of expected events
+        # either no events at all, or below the expected threshold
+
+        # setup
+        db = mongo_connection.test_alerta
+        alerts = db["alerts"]
+        alerts.delete_many({})
+        assert alerts.count_documents({}) == 0
+
+        alert_shell = get_deadman_alert_shell({"alert_name": "test_threshold"})
+        # a summary that will let us know we are missing expected events
+        alert_shell["summary"] = "Expected events are missing"
+        # alert_shell["aggregation_key"] = "doesnt.matter"
+        # create some events that should happen all the time
+        # to make sure we don't fire when we have events
+        # a one login logon event
+        events = []
+        for file in glob.glob("./tests/samples/sample_OneLogin_EventBridge_Raw.json"):
+            events += json.load(open(file))
+        assert len(events) > 0
+        alerts = list(determine_threshold_trigger(alert_shell, events))
+        assert len(alerts) == 0
+
     def test_save_resolved_sequence_alert(self, mongo_connection):
-        # sequence alerts are just a series of threshold alerts
+        # sequence alerts are just a series of alerts
         # which should all be resolved (in order) before the alert
         # is created
-        # the threshold alerts are carried in 'slots' in the
+        # the alerts are carried in 'slots' in the
         # sequence alert, all slots full of events and the alert fires.
+
         # setup
         db = mongo_connection.test_alerta
         inflight_alerts = db["inflight_alerts"]
