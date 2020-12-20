@@ -20,7 +20,7 @@ from alerta import (
 )
 from alerta import remove_previously_alerted, remove_inflight_events
 from alerta import save_alert, save_inflight_alert
-from alerta import determine_threshold_trigger
+from alerta import determine_threshold_trigger, determine_deadman_trigger
 from alerta import expire_sequence_alerts, create_sequence_alerts
 
 mongo_image = fetch(repository="mongo:latest")
@@ -245,10 +245,11 @@ class TestAlertFunctions(object):
         alerts.delete_many({})
         assert alerts.count_documents({}) == 0
 
-        alert_shell = get_deadman_alert_shell({"alert_name": "test_threshold"})
+        alert_shell = get_deadman_alert_shell({"alert_name": "test_deadman"})
+        assert alert_shell["alert_name"] == "test_deadman"
         # a summary that will let us know we are missing expected events
         alert_shell["summary"] = "Expected events are missing"
-        # alert_shell["aggregation_key"] = "doesnt.matter"
+
         # create some events that should happen all the time
         # to make sure we don't fire when we have events
         # a one login logon event
@@ -256,8 +257,21 @@ class TestAlertFunctions(object):
         for file in glob.glob("./tests/samples/sample_OneLogin_EventBridge_Raw.json"):
             events += json.load(open(file))
         assert len(events) > 0
-        alerts = list(determine_threshold_trigger(alert_shell, events))
+        # set the aggregation key to match something in the event we loaded so
+        # the aggregation counts recognize when we have a match
+        alert_shell["aggregation_key"] = "region"
+        alerts = list(determine_deadman_trigger(alert_shell, events))
         assert len(alerts) == 0
+
+        # again without events
+        # should trigger a deadman alert
+        events = []
+        alerts = list(determine_deadman_trigger(alert_shell, events))
+        assert len(alerts) > 0
+        for alert in alerts:
+            logger.info(f"deadman summary: {alert['summary']}")
+            assert "Expected events are missing" in alert["summary"]
+            assert "deadman" in alert["tags"]
 
     def test_save_resolved_sequence_alert(self, mongo_connection):
         # sequence alerts are just a series of alerts
