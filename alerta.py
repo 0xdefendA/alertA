@@ -282,8 +282,25 @@ def determine_deadman_trigger(alert_params, events):
         for a lack of events (altogether missing, or below a count) as the trigger
     '''
     counts=mostCommon(events,alert_params['aggregation_key'])
-    if not events or not counts:
-        # likely no events
+    if not events:
+        # deadman alerts are built to notice
+        # when expected events are missing
+        # but it means we have no events to pass on
+        # make a meta event for the fact that events are missing
+        events=[]
+        meta_event = {
+            "utctimestamp": utcnow().isoformat(),
+            "severity": "INFO",
+            "summary": "Expected event not found",
+            "category": "deadman",
+            "source": "deadman",
+            "tags": ["deadman"],
+            "plugins": [],
+            "details": {},
+        }
+        events.append(meta_event)
+
+    if not counts:
         # make up a metadata count
         counts = [(alert_params['aggregation_key'], 0)]
 
