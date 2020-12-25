@@ -1,0 +1,32 @@
+---
+alert_name: "login to aws root without use of password manager"
+alert_type: "sequence"
+lifespan: "1 hour"
+severity: "NOTICE"
+summary: "{{metadata.count}} aws root logins from {{slots.0.events.0.details.sourceipaddress}} without use of a password manager"
+debug: True
+category: "authentication"
+tags:
+    - "login"
+    - "aws"
+slots:
+    -
+        alert_name: "root_login"
+        alert_type: "threshold"
+        severity: "INFO"
+        criteria: "source='cloudtrail' AND json_extract_scalar(details,'$.eventname') = 'ConsoleLogin' AND json_extract_scalar(details,'$.useridentity.type') = 'Root'"
+        summary: "aws {{metadata.value}} {{metadata.count}} root logins"
+        event_snippet: "{{useridentity.arn}} to account {{recipientaccountid}} from IP {{sourceipaddress}}"
+        aggregation_key: "useridentity.arn"
+        threshold: 1
+        event_sample_count: 5
+    -
+        alert_name: "no_password_manager_use"
+        alert_type: "deadman"
+        severity: "INFO"
+        criteria: "source='bitwarden' AND json_extract_scalar(details,'$.itemid')='root_item_id'"
+        summary: "bitwarden aws root item id login on {{events.0.details.date}}"
+        event_snippet: "{{details.actinguserid}} accessed aws root credential on  {{details.date}} from IP {{details.sourceipaddress}}"
+        aggregation_key: "details.actinguserid"
+        threshold: 0
+        event_sample_count: 5
