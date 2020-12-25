@@ -52,7 +52,7 @@ class TestAlertSetup(object):
     def test_mongo_instance(self, mongo_connection, mongo_session):
         assert "Waiting for connections" in mongo_session.logs()
         # client = pymongo.MongoClient(f'mongodb://{mongo_ip}:27017/')
-        print(mongo_connection)
+        # print(mongo_connection)
         assert mongo_connection["connect"]
 
     def test_database(self, mongo_connection):
@@ -338,3 +338,67 @@ class TestAlertFunctions(object):
             logger.info(f"found slot in sequence: {alert['slots'][0]['summary']}")
         # assert the inflight alert is removed
         assert inflight_alerts.count_documents({}) == 0
+
+
+class TestAlertCombinations(object):
+    def test_threshold_deadman_sequence_alert(self, mongo_connection):
+        # test a combination of threshold, deadman alert
+        # mock up of an alert to look for an aws root account
+        # login without a corresponding password manager access
+        # meaning the credentials aren't stored in a password manager
+        # threshold looks for the login, deadman looks for the lack of
+        # password manager use
+
+        # modeled after https://bitwarden.com/help/api/
+        # but no sample events available,YMMV
+
+        # setup
+        db = mongo_connection.test_alerta
+        inflight_alerts = db["inflight_alerts"]
+        alerts = db["alerts"]
+        alerts.delete_many({})
+        inflight_alerts.delete_many({})
+        assert alerts.count_documents({}) == 0
+        assert inflight_alerts.count_documents({}) == 0
+        # create an fulfilled sequence alert, and see if
+        # it triggers an alert creation
+        alert_shell = yaml.safe_load(
+            open("./tests/samples/sequence_threshold_deadman_alert.yml")
+        )
+        alert_shell = get_sequence_alert_shell(alert_shell)
+        # create some events that satisfy the sequence
+        # root user
+        events = []
+        for file in glob.glob("./tests/samples/sample_cloudtrail_login_no_mfa.json"):
+            events += json.load(open(file))
+        assert len(events) > 0
+
+        # since we are injecting alerts instead of querying athena
+        # resolve the slot threshold alert manually
+        for alert in determine_threshold_trigger(alert_shell["slots"][0], events):
+            # did the snippet get resolved?
+            assert "root logins" in alert["summary"]
+            # did events get copied into the resulting alert?
+            assert len(alert["events"]) > 0
+            # add this resolved threshold alert as a slot in the sequence alert
+            alert_shell["slots"][0] = alert
+        # is slot 0 tripped?
+        assert "triggered" in alert_shell["slots"][0]
+        assert len(alert_shell["slots"][0]["events"]) > 0
+        # save this inflight sequence alert
+        save_inflight_alert(db, alert_shell)
+        assert inflight_alerts.count_documents({}) == 1
+        # # run the routine resolving sequence alerts: create_sequence_alerts
+        # create_sequence_alerts(db)
+        # # assert there is a new alert created
+        # assert alerts.count_documents({}) == 1
+        # for alert in alerts.find({}):
+        #     logger.info(f"found db alert: {alert['summary']}")
+        #     # ensure the summary description was
+        #     # resolved correctly by chevron
+        #     assert "ConsoleLogin by Root" in alert["summary"]
+        #     # ensure event snippets are preseved
+        #     assert "ConsoleLogin/Success" in alert["slots"][0]["summary"]
+        #     logger.info(f"found slot in sequence: {alert['slots'][0]['summary']}")
+        # # assert the inflight alert is removed
+        # assert inflight_alerts.count_documents({}) == 0
