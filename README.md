@@ -6,8 +6,10 @@ The [defendA data lake](https://github.com/0xdefendA/defenda-data-lake) is meant
 
 This project adds an alerting engine to the data lake. You can define alerts using simple .yaml files and template the structure and output of alerts without writing any code.
 
-### Alert types: threshold and sequence
+### Alert types: threshold, deadman and sequence
 This engine includes the usual threshold alert type where you can choose a threshold of events that have to occur over some period of time grouped by a common element. i.e. X failed logins by username.
+
+The engine also offers the 'deadman' type alert to fire when an expected event (or batch of events) is missing. For example this can be used to let you know you aren't receiving events from a particular source (google/okta/etc) and there may be a problem in your pipeline.
 
 Additionally this engine offers a capability not usually seen in other alerting engines: the sequence alert.
 
@@ -15,7 +17,14 @@ With a sequence alert you define a series of triggers that have to occur in sequ
 
 For example you can define an alert that triggers on a combination of failed login, successful login and account creation over some period of time and with configurable thresholds. Triggering on the combination of these events allows you to avoid investigating every occurance of the underlying events.
 
-An example is covered in detail below.
+You can combine threshold and deadman alerts in whatever way makes sense for the alert you are trying to craft. For example lets say we store our AWS root account password in our company password vault and we are concerned that someone external may possess or discover the credentials, or that internal people may use it without accessing the password vault (meaning they've incorrectly stored it).
+
+The idea for the alert is then a combination of threshold and deadman:
+
+ - threshold >= 1 of a login to the aws root account
+ - deadman lack of access to the creds for the account password vault (via api like https://bitwarden.com/help/article/event-logs/ )
+
+ This ability to combine threshold and deadman criteria in combnation sequences makes this engine a powerful ally.
 
 
 ### Alert structure
@@ -44,17 +53,17 @@ This alert is looking for AWS console logins, triggering on any single login and
 #### Alert definition fields
 The 'criteria' field is the SQL sent to Athena to gather events to consider for triggering an alert. The expectation is that there will be many events retrieved, then inspected for count thresholds, etc. i.e. the SQL does not have to be precise enough to select a single record.
 
-The 'summary' field is the text of the alert. You can include fields within the alert or events using {{fieldname}} formatting
+The 'summary' field is the text of the alert. You can include fields within the alert or events using {{fieldname.subfieldname}} formatting.
 
 The 'event_snippet' field is a sample of events you'd like to include in the alert text to give context.
 
-'event_sample_count' is the max number of triggering events to include as part of the alert json structure
+'event_sample_count' is the max number of triggering events to include as part of the alert json structure. These will be a full copy of the event(s) that triggered the alert stored in the 'events' json key as a list.
 
-'threshold' is the number of events that would trigger an alert
+'threshold' is the number of events that would trigger an alert (>= triggers a threshold alert, <= triggers a deadman alert>).
 
 'aggregation_key' is the field within an event to use when considering whether a series of events crosses the threshold for an alert.
 
-'debug' is a debugging tag to signal verbose output
+'debug' is a debugging tag to signal verbose output.
 
 'tags' is a series of tags you'd like to apply to any alerts generated via this criteria.
 

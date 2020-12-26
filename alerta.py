@@ -181,7 +181,7 @@ def get_threshold_alert_shell(alert_params):
         "debug": alert_params.get("debug", True),
         "events": [],
     }
-    return alert
+    return merge(alert_params, alert)
 
 
 def get_deadman_alert_shell(alert_params):
@@ -268,7 +268,7 @@ def get_sequence_alert_shell(alert_params):
         "expiration", (toUTC(alert["utctimestamp"]) + offset).isoformat()
     )
 
-    return alert
+    return merge(alert_params, alert)
 
 
 def process_sequence_alert(config, db, session, athena, alert_params):
