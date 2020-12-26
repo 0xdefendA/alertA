@@ -25,8 +25,11 @@ slots:
         alert_type: "deadman"
         severity: "INFO"
         criteria: "source='bitwarden' AND json_extract_scalar(details,'$.itemid')='root_item_id'"
-        summary: "bitwarden aws root item id login on {{events.0.details.date}}"
+        summary: "Expected bitwarden aws root item access"
         event_snippet: "{{details.actinguserid}} accessed aws root credential on  {{details.date}} from IP {{details.sourceipaddress}}"
         aggregation_key: "details.actinguserid"
         threshold: 0
         event_sample_count: 5
+        tags:
+            - "deadman"
+            - "bitwarden"
