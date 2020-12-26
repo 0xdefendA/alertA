@@ -2,6 +2,7 @@ import unittest
 from io import BytesIO
 from subprocess import PIPE, Popen
 from pkg_resources import parse_version
+import chevron
 import pytest
 import pandas as pd
 import pymongo
@@ -11,6 +12,7 @@ import glob
 import logging, logging.config
 from pathlib import Path
 from utils.dates import utcnow
+from utils.helpers import first_matching_index_value
 from pytest_docker_tools import build, container, fetch
 from alerta import generate_meteor_id
 from alerta import (
@@ -388,17 +390,45 @@ class TestAlertCombinations(object):
         # save this inflight sequence alert
         save_inflight_alert(db, alert_shell)
         assert inflight_alerts.count_documents({}) == 1
-        # # run the routine resolving sequence alerts: create_sequence_alerts
-        # create_sequence_alerts(db)
-        # # assert there is a new alert created
-        # assert alerts.count_documents({}) == 1
-        # for alert in alerts.find({}):
-        #     logger.info(f"found db alert: {alert['summary']}")
-        #     # ensure the summary description was
-        #     # resolved correctly by chevron
-        #     assert "ConsoleLogin by Root" in alert["summary"]
-        #     # ensure event snippets are preseved
-        #     assert "ConsoleLogin/Success" in alert["slots"][0]["summary"]
-        #     logger.info(f"found slot in sequence: {alert['slots'][0]['summary']}")
-        # # assert the inflight alert is removed
-        # assert inflight_alerts.count_documents({}) == 0
+
+        # resolve the deadman in slot 1
+        alerts = db.inflight_alerts.find({})
+        # instead of calling process_sequence_alert(config, db, session, athena, alert)
+        # since we don't have athena in pytest, run through the steps to resolve slot 1
+        alert_params = alerts[0]
+        index, slot = first_matching_index_value(
+            alert_params["slots"], condition=lambda i: not "triggered" in i
+        )
+        assert index == 1
+        assert slot["alert_name"] == "no_password_manager_use"
+        criteria = chevron.render(slot["criteria"], alert_params)
+        assert "bitwarden" in criteria
+        # test the lack of events triggering slot 1
+        events = []
+        alerts = list(determine_deadman_trigger(alert_params["slots"][1], events))
+        assert len(alerts) > 0
+        for alert in alerts:
+            logger.info(f"deadman summary: {alert['summary']}")
+            assert "Expected bitwarden aws root item access" in alert["summary"]
+            assert "deadman" in alert["tags"]
+            # update the slot
+            alert_params["slots"][1] = alert
+
+        # save inflight alert
+        save_inflight_alert(db, alert_params)
+        # run the routine resolving sequence alerts: create_sequence_alerts
+        create_sequence_alerts(db)
+        # assert there is a new alert created
+        alerts = db["alerts"]
+        assert alerts.count_documents({}) == 1
+        for alert in alerts.find({}):
+            logger.info(f"found db alert: {alert['summary']}")
+            # ensure the summary description was
+            # resolved correctly by chevron
+            assert "without use of a password manager" in alert["summary"]
+            # ensure event snippets are preseved
+            assert "root logins" in alert["slots"][0]["summary"]
+            assert "root item access" in alert["slots"][1]["summary"]
+            logger.info(f"found slot in sequence: {alert['slots'][1]['summary']}")
+        # assert the inflight alert is removed
+        assert inflight_alerts.count_documents({}) == 0
