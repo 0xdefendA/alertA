@@ -1,0 +1,16 @@
+{
+    "occurredAt": "2020-03-05T20:22:00.819000Z",
+    "networkId": "L_123456943174002446",
+    "type": "association",
+    "description": "802.11 association",
+    "clientId": "1234ac8",
+    "clientDescription": "Android-8",
+    "deviceSerial": "1234-1234-QRJ2",
+    "deviceName": "aa1133",
+    "ssidNumber": 0,
+    "ssidName": "sample SSID",
+    "eventData": {
+        "channel": "149",
+        "rssi": "28"
+    }
+}

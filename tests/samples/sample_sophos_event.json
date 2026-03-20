@@ -1,0 +1,23 @@
+{
+    "appCerts": null,
+    "appSha256": null,
+    "core_remedy_items": null,
+    "created_at": "2020-03-16T16:24:31.705Z",
+    "customer_id": "12345-1234-4da3-9cf0-2cc33b4d12f0",
+    "endpoint_id": "12345678-1234-4f5d-8ef8-4eaa2ea0ce60",
+    "endpoint_type": "computer",
+    "group": "WEB",
+    "id": "12345678-df07-1234-aa41-f9d3fa851199",
+    "location": "a computer name",
+    "name": "'http://download.somewhere.com/setup-x86_64.exe' warned due to filetype 'Windows Executable (exe)'",
+    "origin": null,
+    "severity": "low",
+    "source": "ComputerName\\username",
+    "source_info": {
+        "ip": "192.168.0.5"
+    },
+    "threat": null,
+    "type": "Event::Endpoint::WebControlViolation",
+    "user_id": "1234566f7ceb8513254e5df6",
+    "when": "2020-03-16T16:24:23.000Z"
+}
