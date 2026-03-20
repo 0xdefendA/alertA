@@ -131,6 +131,19 @@ criteria: "source='onelogin' AND CAST(json_extract_scalar(details,'$.risk_score'
 'In flight' sequence alerts are stored in the mongo collection called `inflight_alerts`. You can inspect this collection to get a sense of how your alerts are functioning, how many are being processed, etc.
 
 
+## Getting Started
+This project uses [uv](https://github.com/astral-sh/uv) for dependency management and requires Python 3.12+.
+
+To set up the development environment:
+```bash
+uv sync
+```
+
+To run tests:
+```bash
+uv run pytest
+```
+
 ## Docker
 To get up and running quickly simply:
 
@@ -141,3 +154,13 @@ and you will end up with 2 containers (python and mongoDB) running the alertA co
 
 This will get you up and running, for a production deployment you'll want a permanent data storage for the mongo database to preserve your alerts.
 
+### Docker on macOS
+You can either use Docker Desktop or [colima](https://github.com/abiosoft/colima) as your docker daemon.
+
+**NOTE:** If you use Colima, you must set the `DOCKER_HOST` environment variable so the Docker Python library can find the socket:
+
+```bash
+export DOCKER_HOST=unix://${HOME}/.colima/default/docker.sock
+# or specifically for your user:
+# export DOCKER_HOST=unix:///Users/yourusername/.colima/default/docker.sock
+```
