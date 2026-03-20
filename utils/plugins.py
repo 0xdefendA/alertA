@@ -1,7 +1,8 @@
-import pynsive
+import importlib
+import pkgutil
 import os
+import sys
 from operator import itemgetter
-import json
 import logging
 from utils.dict_helpers import enum_keys
 
@@ -35,26 +36,28 @@ def register_plugins(directory_name):
     """
     pluginList = list()  # tuple of module,registration dict,priority
     if os.path.exists(directory_name):
-        modules = pynsive.list_modules(directory_name)
-        for mname in modules:
-            module = pynsive.import_module(mname)
-            if not module:
-                raise ImportError("Unable to load module {}".format(mname))
-            else:
+        if directory_name not in sys.path:
+            sys.path.insert(0, directory_name)
+
+        # Use pkgutil and importlib instead of pynsive
+        for finder, name, ispkg in pkgutil.iter_modules([directory_name]):
+            try:
+                module = importlib.import_module(name)
                 if "message" in dir(module):
                     mclass = module.message()
                     mreg = mclass.registration
-                    if "priority" in dir(mclass):
-                        mpriority = mclass.priority
-                    else:
-                        mpriority = 100
+                    mpriority = getattr(mclass, "priority", 100)
+
                     if isinstance(mreg, list):
                         logger.info(
                             "[*] plugin {0} registered to receive messages with {1}".format(
-                                mname, mreg
+                                name, mreg
                             )
                         )
                         pluginList.append((mclass, mreg, mpriority))
+            except Exception as e:
+                logger.error(f"Unable to load module {name}: {e}")
+                raise ImportError(f"Unable to load module {name}") from e
     return pluginList
 
 

@@ -1,17 +1,17 @@
 import math
-import pytz
-import tzlocal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dateutil.parser import parse
+import tzlocal
 import logging
 
 logger = logging.getLogger()
 
+# tzlocal >= 4.0 returns a ZoneInfo object
 LOCAL_TIMEZONE = tzlocal.get_localzone()
 
 
 def get_date_parts():
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     last_hour_now = now - timedelta(hours=1)
 
     now_hour = str(now.hour).rjust(2, "0")
@@ -37,13 +37,12 @@ def get_date_parts():
 
 def toUTC(suspectedDate):
     """make a UTC date out of almost anything"""
-    utc = pytz.UTC
     objDate = None
-    if type(suspectedDate) == datetime:
+    if isinstance(suspectedDate, datetime):
         objDate = suspectedDate
-    elif type(suspectedDate) == float:
+    elif isinstance(suspectedDate, float):
         if suspectedDate <= 0:
-            objDate = datetime(1970, 1, 1)
+            objDate = datetime(1970, 1, 1, tzinfo=timezone.utc)
         else:
             # This breaks in the year 2286
             EPOCH_MAGNITUDE = 9
@@ -52,43 +51,40 @@ def toUTC(suspectedDate):
                 suspectedDate = suspectedDate / 10 ** (magnitude - EPOCH_MAGNITUDE)
             objDate = datetime.fromtimestamp(suspectedDate, LOCAL_TIMEZONE)
     elif str(suspectedDate).isdigit():
-        if int(str(suspectedDate)) <= 0:
-            objDate = datetime(1970, 1, 1)
+        suspected_int = int(str(suspectedDate))
+        if suspected_int <= 0:
+            objDate = datetime(1970, 1, 1, tzinfo=timezone.utc)
         else:
             # epoch? but seconds/milliseconds/nanoseconds (lookin at you heka)
             epochDivisor = int(str(1) + "0" * (len(str(suspectedDate)) % 10))
             objDate = datetime.fromtimestamp(
-                float(suspectedDate / epochDivisor), LOCAL_TIMEZONE
+                float(suspected_int / epochDivisor), LOCAL_TIMEZONE
             )
-    elif type(suspectedDate) is str:
+    elif isinstance(suspectedDate, str):
         # try to parse float or negative number from string:
         objDate = None
         try:
             suspected_float = float(suspectedDate)
             if suspected_float <= 0:
-                objDate = datetime(1970, 1, 1)
+                objDate = datetime(1970, 1, 1, tzinfo=timezone.utc)
         except ValueError:
             pass
         if objDate is None:
             objDate = parse(suspectedDate, fuzzy=True)
-    try:
-        if objDate.tzinfo is None:
-            objDate = LOCAL_TIMEZONE.localize(objDate)
-    except AttributeError as e:
-        raise ValueError(
-            "Date %s which was converted to %s has no "
-            "tzinfo attribute : %s" % (suspectedDate, objDate, e)
-        )
 
-    objDate = utc.normalize(objDate)
+    if objDate is None:
+        raise ValueError(f"Unable to convert {suspectedDate} to a date object")
+
+    if objDate.tzinfo is None:
+        # If naive, assume it's in local timezone
+        objDate = objDate.replace(tzinfo=LOCAL_TIMEZONE)
+
+    # Convert to UTC and normalize (astimezone handles normalization for zoneinfo/pytz)
+    objDate = objDate.astimezone(timezone.utc)
 
     return objDate
 
 
 def utcnow():
-    """python is silly and returns naive datetime
-    when datetime.utcnow() is called
-    But if you call now with a UTC timezone
-    it returns a non naive datetime
-    """
-    return datetime.now(pytz.UTC)
+    """Returns a non-naive UTC datetime"""
+    return datetime.now(timezone.utc)

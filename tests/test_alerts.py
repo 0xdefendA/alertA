@@ -1,7 +1,6 @@
 import unittest
 from io import BytesIO
 from subprocess import PIPE, Popen
-from pkg_resources import parse_version
 import chevron
 import pytest
 import pandas as pd
@@ -55,7 +54,8 @@ class TestAlertSetup(object):
         assert "Waiting for connections" in mongo_session.logs()
         # client = pymongo.MongoClient(f'mongodb://{mongo_ip}:27017/')
         # print(mongo_connection)
-        assert mongo_connection["connect"]
+        # In pymongo 4+, Database objects do not implement truth value testing.
+        assert mongo_connection["connect"] is not None
 
     def test_database(self, mongo_connection):
         # the database to be used
@@ -215,12 +215,12 @@ class TestAlertFunctions(object):
 
         alert_shell = get_threshold_alert_shell({"alert_name": "test_threshold"})
         # a summary that will get resolved by the events
-        alert_shell[
-            "summary"
-        ] = "{{events.0.eventname}} by {{events.0.useridentity.type}} {{metadata.count}} mfa:{{events.0.additionaleventdata.mfaused}}"
-        alert_shell[
-            "event_snippet"
-        ] = "{{eventname}}/{{responseelements.consolelogin}} mfa:{{additionaleventdata.mfaused}} from {{sourceipaddress}}"
+        alert_shell["summary"] = (
+            "{{events.0.eventname}} by {{events.0.useridentity.type}} {{metadata.count}} mfa:{{events.0.additionaleventdata.mfaused}}"
+        )
+        alert_shell["event_snippet"] = (
+            "{{eventname}}/{{responseelements.consolelogin}} mfa:{{additionaleventdata.mfaused}} from {{sourceipaddress}}"
+        )
         # set the aggregation key to count events by
         # >= "threshold" of the events by this key will trip the alert
         alert_shell["aggregation_key"] = "additionaleventdata.mfaused"
@@ -301,16 +301,16 @@ class TestAlertFunctions(object):
             events += json.load(open(file))
         assert len(events) > 0
         # a summary that will get resolved by the events in the slots
-        alert_shell[
-            "summary"
-        ] = "{{slots.0.events.0.eventname}} by {{slots.0.events.0.useridentity.type}} {{metadata.count}} mfa:{{slots.0.events.0.additionaleventdata.mfaused}}"
+        alert_shell["summary"] = (
+            "{{slots.0.events.0.eventname}} by {{slots.0.events.0.useridentity.type}} {{metadata.count}} mfa:{{slots.0.events.0.additionaleventdata.mfaused}}"
+        )
 
         alert_shell["slots"] = []
         # make a slot of threshold alert + events that trigger it
         alert_slot = get_threshold_alert_shell({})
-        alert_slot[
-            "event_snippet"
-        ] = "{{eventname}}/{{responseelements.consolelogin}} mfa:{{additionaleventdata.mfaused}} from {{sourceipaddress}}"
+        alert_slot["event_snippet"] = (
+            "{{eventname}}/{{responseelements.consolelogin}} mfa:{{additionaleventdata.mfaused}} from {{sourceipaddress}}"
+        )
         alert_slot["aggregation_key"] = "additionaleventdata.mfaused"
         alert_slot["events"] = events
 
@@ -392,12 +392,13 @@ class TestAlertCombinations(object):
         assert inflight_alerts.count_documents({}) == 1
 
         # resolve the deadman in slot 1
-        alerts = db.inflight_alerts.find({})
+        alerts_cursor = db.inflight_alerts.find({})
         # instead of calling process_sequence_alert(config, db, session, athena, alert)
         # since we don't have athena in pytest, run through the steps to resolve slot 1
-        alert_params = alerts[0]
+        alert_params = next(alerts_cursor)
+
         index, slot = first_matching_index_value(
-            alert_params["slots"], condition=lambda i: not "triggered" in i
+            alert_params["slots"], condition=lambda i: "triggered" not in i
         )
         assert index == 1
         assert slot["alert_name"] == "no_password_manager_use"
@@ -405,9 +406,9 @@ class TestAlertCombinations(object):
         assert "bitwarden" in criteria
         # test the lack of events triggering slot 1
         events = []
-        alerts = list(determine_deadman_trigger(alert_params["slots"][1], events))
-        assert len(alerts) > 0
-        for alert in alerts:
+        alerts_list = list(determine_deadman_trigger(alert_params["slots"][1], events))
+        assert len(alerts_list) > 0
+        for alert in alerts_list:
             logger.info(f"deadman summary: {alert['summary']}")
             assert "Expected bitwarden aws root item access" in alert["summary"]
             assert "deadman" in alert["tags"]
@@ -419,9 +420,9 @@ class TestAlertCombinations(object):
         # run the routine resolving sequence alerts: create_sequence_alerts
         create_sequence_alerts(db)
         # assert there is a new alert created
-        alerts = db["alerts"]
-        assert alerts.count_documents({}) == 1
-        for alert in alerts.find({}):
+        alerts_coll = db["alerts"]
+        assert alerts_coll.count_documents({}) == 1
+        for alert in alerts_coll.find({}):
             logger.info(f"found db alert: {alert['summary']}")
             # ensure the summary description was
             # resolved correctly by chevron

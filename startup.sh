@@ -1,9 +1,16 @@
 #! /bin/bash
 
-# fixup this python:3 docker image to run our cron
+# Modernize with uv and python 3.12
 apt-get update
-apt-get -y install cron rsyslog
-pip install -r /opt/alerts/requirements.txt
+apt-get -y install cron rsyslog curl
+
+# install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="/root/.local/bin:$PATH"
+
+# install dependencies
+cd /opt/alerts
+uv sync
 
 /etc/init.d/rsyslog start
 /etc/init.d/cron start
@@ -13,8 +20,9 @@ if [ -f "/opt/alerts/python.env" ]; then
     cat /opt/alerts/python.env > /var/spool/cron/crontabs/root
 fi
 
+# Use uv run for the cron job
 CRONTAB_ENTRIES='
-*/15 * * * * cd /opt/alerts;/usr/local/bin/python alerta.py 2>&1 | logger
+*/15 * * * * cd /opt/alerts; /root/.local/bin/uv run alerta.py 2>&1 | logger
 '
 
 cat << EOF >> /var/spool/cron/crontabs/root
